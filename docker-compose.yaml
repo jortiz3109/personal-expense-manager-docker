@@ -1,0 +1,113 @@
+name: expense-manager
+services:
+  api:
+    container_name: expense-manager-api
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    volumes:
+      - ${API_PATH}:/var/www/html
+    depends_on:
+      - postgres
+    networks:
+      - expenses
+    configs:
+      - source: php_config
+        target: /usr/local/etc/php/conf.d/99-app.ini
+      - source: xdebug_config
+        target: /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+      - source: fpm_config
+        target: /usr/local/etc/php-fpm.d/www.conf
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+
+  postgres:
+    container_name: expense-manager-postgres
+    image: postgres
+    restart: always
+    shm_size: 128mb
+    environment:
+      PGUSER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_DB: ${DB_DATABASE}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - expenses
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $$POSTGRES_DB -U $$POSTGRES_USER"]
+      interval: 1s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 254M
+  nginx:
+    container_name: expense-manager-nginx
+    image: nginx:stable-alpine
+    ports:
+      - 127.0.0.1:8080:80/tcp
+    networks:
+      - expenses
+    configs:
+      - source: nginx_config
+        target: /etc/nginx/conf.d/default.conf
+    depends_on:
+      - api
+      # - web
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+        reservations:
+          cpus: "0.12"
+          memory: 64M
+  adminer:
+    container_name: expense-manager-adminer
+    image: adminer:latest
+    restart: always
+    networks:
+      - expenses
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 64M
+        reservations:
+          cpus: "0.12"
+          memory: 32M
+volumes:
+  pgdata:
+    driver: local
+networks:
+  expenses:
+    driver: bridge
+configs:
+  xdebug_config:
+    file: ./api/xdebug.ini
+  php_config:
+    file: ./api/php.ini
+  fpm_config:
+    file: ./api/www.conf
+  nginx_config:
+    file: ./nginx/default.conf
