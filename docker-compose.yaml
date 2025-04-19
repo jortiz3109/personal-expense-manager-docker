@@ -7,11 +7,15 @@ services:
       DB_DATABASE: ${DB_DATABASE}
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
+      SANCTUM_STATEFUL_DOMAINS: "localhost:8080"
+      APP_URL: "http://localhost:8080"
     build:
       context: ./api
       dockerfile: Dockerfile
     volumes:
-      - ${API_PATH}:/var/www/html
+      - type: bind
+        source: ${API_PATH}
+        target: /var/www/html
     depends_on:
       - postgres
     networks:
@@ -21,8 +25,6 @@ services:
         target: /usr/local/etc/php/conf.d/99-app.ini
       - source: xdebug_config
         target: /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
-      - source: fpm_config
-        target: /usr/local/etc/php-fpm.d/www.conf
     deploy:
       resources:
         limits:
@@ -31,7 +33,26 @@ services:
         reservations:
           cpus: "0.25"
           memory: 256M
-
+  vue:
+    container_name: expense-manager-vue
+    tty: true
+    build:
+      context: ./vue/
+      dockerfile: Dockerfile
+    volumes:
+      - ${VUE_PATH}:/var/www/html
+    depends_on:
+      - api
+    networks:
+      - expenses
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
   postgres:
     container_name: expense-manager-postgres
     image: postgres
@@ -107,7 +128,5 @@ configs:
     file: ./api/xdebug.ini
   php_config:
     file: ./api/php.ini
-  fpm_config:
-    file: ./api/www.conf
   nginx_config:
     file: ./nginx/default.conf
