@@ -1,4 +1,4 @@
-FROM php:8.4-cli-alpine
+FROM php:8.4-fpm-alpine
 
 LABEL mantainer="John Edisson Ortiz"
 LABEL email="me@johndev.co"
@@ -19,4 +19,4 @@ WORKDIR /var/www/html/
 
 USER www-data
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8080", "--env=local"]
+CMD ["php-fpm"]

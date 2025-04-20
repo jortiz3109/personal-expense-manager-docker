@@ -25,6 +25,8 @@ services:
         target: /usr/local/etc/php/conf.d/99-app.ini
       - source: xdebug_config
         target: /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+      - source: fpm_config
+        target: /usr/local/etc/php-fpm.d/www.conf
     deploy:
       resources:
         limits:
@@ -92,7 +94,7 @@ services:
         target: /etc/nginx/conf.d/default.conf
     depends_on:
       - api
-      # - web
+      - vue
     deploy:
       resources:
         limits:
@@ -103,7 +105,7 @@ services:
           memory: 64M
   adminer:
     container_name: expense-manager-adminer
-    image: adminer:latest
+    image: adminer:fastcgi
     restart: always
     networks:
       - expenses
@@ -122,7 +124,7 @@ volumes:
     driver: local
 networks:
   expenses:
-    driver: bridge
+    driver: bridge 
 configs:
   xdebug_config:
     file: ./api/xdebug.ini
@@ -130,3 +132,5 @@ configs:
     file: ./api/php.ini
   nginx_config:
     file: ./nginx/default.conf
+  fpm_config:
+    file: ./api/www.conf
