@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.7-labs
+
 FROM node:alpine3.21
 
 LABEL maintainer="John Edisson Ortiz"
@@ -6,7 +8,13 @@ LABEL email="me@johndev.co"
 COPY ./entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
+USER node
 WORKDIR /var/www/html
-COPY . .
+
+COPY --from=source --chown=node:node package*.json /var/www/html/
+
+RUN npm install --no-audit --no-fund
+
+COPY --from=source --chown=node:node --exclude=node_modules --exclude=.git --exclude=.vscode . /var/www/html/
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh", "npm", "run", "dev", "--", "--host", "0.0.0.0"]

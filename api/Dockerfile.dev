@@ -1,0 +1,26 @@
+# syntax=docker/dockerfile:1.7-labs
+
+FROM php:8.4-fpm-alpine
+
+LABEL mantainer = "John Edisson Ortiz"
+LABEL email = "me@johndev.co"
+
+ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
+
+RUN install-php-extensions redis sockets bcmath pdo_mysql pdo_pgsql intl xdebug @composer
+
+COPY ./entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+WORKDIR /var/www/html/
+USER www-data
+
+COPY --from=source --chown=www-data:www-data composer.json composer.lock /var/www/html/
+
+RUN composer install --no-autoloader
+
+COPY --from=source --chown=www-data:www-data --exclude=.git --exclude=vendor --exclude=node_modules . /var/www/html/
+
+RUN composer dump-autoload --optimize
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh", "php-fpm"]

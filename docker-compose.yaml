@@ -1,21 +1,33 @@
 name: expense-manager
 services:
   api:
-    container_name: expense-manager-api
+    develop:
+      watch:
+        - action: sync
+          path: ${API_PATH}
+          target: /var/www/html
+          ignore:
+            - .git
+            - node_modules/
+            - vendor/
+            - storage/
+        - action: rebuild
+          path: ${API_PATH}/composer.json
+        - action: rebuild
+          path: ${API_PATH}/composer.lock
     environment:
       DB_HOST: ${DB_HOST}
       DB_DATABASE: ${DB_DATABASE}
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
-      SANCTUM_STATEFUL_DOMAINS: "localhost:8080"
-      APP_URL: "http://localhost:8080"
+      APP_CURRENCY: ${APP_CURRENCY}
+      SANCTUM_STATEFUL_DOMAINS: "127.0.0.1:8080"
+      APP_URL: "http://127.0.0.1:8080"
     build:
       context: ./api
-      dockerfile: Dockerfile
-    volumes:
-      - type: bind
+      dockerfile: Dockerfile.dev
+      additional_contexts:
         source: ${API_PATH}
-        target: /var/www/html
     depends_on:
       - postgres
     networks:
@@ -36,13 +48,24 @@ services:
           cpus: "0.25"
           memory: 256M
   vue:
-    container_name: expense-manager-vue
-    tty: true
+    develop:
+      watch:
+        - action: sync
+          path: ${VUE_PATH}
+          target: /var/www/html
+          ignore:
+            - .git
+            - .vscode
+            - node_modules
+        - action: rebuild
+          path: ${API_PATH}/package.json
+        - action: rebuild
+          path: ${API_PATH}/package-lock.json
     build:
-      context: ./vue/
-      dockerfile: Dockerfile
-    volumes:
-      - ${VUE_PATH}:/var/www/html
+      context: ./vue
+      dockerfile: Dockerfile.dev
+      additional_contexts:
+        source: ${VUE_PATH}
     depends_on:
       - api
     networks:
@@ -56,7 +79,6 @@ services:
           cpus: "0.25"
           memory: 128M
   postgres:
-    container_name: expense-manager-postgres
     image: postgres
     restart: always
     shm_size: 128mb
@@ -78,12 +100,11 @@ services:
       resources:
         limits:
           cpus: "0.50"
-          memory: 512M
+          memory: 254M
         reservations:
           cpus: "0.25"
-          memory: 254M
+          memory: 128M
   nginx:
-    container_name: expense-manager-nginx
     image: nginx:stable-alpine
     ports:
       - 127.0.0.1:8080:80/tcp
@@ -104,13 +125,31 @@ services:
           cpus: "0.12"
           memory: 64M
   adminer:
-    container_name: expense-manager-adminer
     image: adminer:fastcgi
     restart: always
     networks:
       - expenses
     environment:
       ADMINER_DEFAULT_SERVER: postgres
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 64M
+        reservations:
+          cpus: "0.12"
+          memory: 32M
+  pgweb:
+    image: sosedoff/pgweb
+    restart: always
+    networks:
+      - expenses
+    depends_on:
+      - api
+    ports:
+      - 127.0.0.1:8081:8081/tcp
+    environment:
+      PGWEB_URL_PREFIX: "pgweb"
     deploy:
       resources:
         limits:
