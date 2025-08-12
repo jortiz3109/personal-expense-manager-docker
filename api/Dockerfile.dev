@@ -19,8 +19,8 @@ COPY --from=source --chown=www-data:www-data composer.json composer.lock /var/ww
 
 RUN composer install --no-autoloader
 
-COPY --from=source --chown=www-data:www-data --exclude=.git --exclude=vendor --exclude=node_modules . /var/www/html/
+COPY --from=source --chown=www-data:www-data . /var/www/html/
 
 RUN composer dump-autoload --optimize
 
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh", "php-fpm"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

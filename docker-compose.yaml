@@ -1,6 +1,7 @@
 name: expense-manager
 services:
   api:
+    command: ["php-fpm"]
     develop:
       watch:
         - action: sync
@@ -23,6 +24,8 @@ services:
       APP_CURRENCY: ${APP_CURRENCY}
       SANCTUM_STATEFUL_DOMAINS: "127.0.0.1:8080"
       APP_URL: "http://127.0.0.1:8080"
+      OPEN_EXCHANGE_APP_ID: ${OPEN_EXCHANGE_APP_ID}
+      EXCHANGE_RATE_PROVIDER: ${EXCHANGE_RATE_PROVIDER}
     build:
       context: ./api
       dockerfile: Dockerfile.dev
@@ -47,6 +50,12 @@ services:
         reservations:
           cpus: "0.25"
           memory: 256M
+  api-cron:
+    extends:
+      service: api
+    depends_on:
+      - api
+    command: ["php", "artisan", "schedule:work"]
   vue:
     develop:
       watch:
@@ -80,7 +89,6 @@ services:
           memory: 128M
   postgres:
     image: postgres
-    restart: always
     shm_size: 128mb
     environment:
       PGUSER: ${DB_USERNAME}
@@ -124,24 +132,8 @@ services:
         reservations:
           cpus: "0.12"
           memory: 64M
-  adminer:
-    image: adminer:fastcgi
-    restart: always
-    networks:
-      - expenses
-    environment:
-      ADMINER_DEFAULT_SERVER: postgres
-    deploy:
-      resources:
-        limits:
-          cpus: "0.25"
-          memory: 64M
-        reservations:
-          cpus: "0.12"
-          memory: 32M
   pgweb:
     image: sosedoff/pgweb
-    restart: always
     networks:
       - expenses
     depends_on:
@@ -150,6 +142,7 @@ services:
       - 127.0.0.1:8081:8081/tcp
     environment:
       PGWEB_URL_PREFIX: "pgweb"
+      PGWEB_DATABASE_URL: "postgres://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT:-5432}/${DB_DATABASE}?sslmode=${DB_SSL_MODE:-disable}"
     deploy:
       resources:
         limits:
